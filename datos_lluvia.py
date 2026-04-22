@@ -1,43 +1,55 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# 1. Cargar datos de lluvia (este usa coma como separador normalmente)
-df_lluvia = pd.read_csv('lluvia_mensual_bogota.csv')
+def ejecutar_analisis_lluvia():
+    archivo = 'lluvia_mensual_bogota.csv'
 
-# 2. Limpieza de Lluvia: Agrupar por mes para tener un promedio histórico
-# Tu archivo tiene datos por año/mes, saquemos el promedio por mes del año
-meses_map = {
-    1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril', 
-    5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto', 
-    9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
-}
-df_lluvia['nombre_mes'] = df_lluvia['mes'].map(meses_map)
+    try:
+        print("Cargando datos de lluvia...")
+        df = pd.read_csv(archivo)
 
-# Promedio de lluvia por mes (histórico)
-lluvia_mensual = df_lluvia.groupby('nombre_mes')['precipitacion_mm'].mean().reindex(meses_map.values())
+        # El archivo tiene columnas: mes_anio, precipitacion_mm, num_registros, anio, mes
+        meses_map = {1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+                     5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+                     9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'}
+        meses_orden = list(meses_map.values())
 
-# 3. Traer los datos de mortalidad que ya tenías (ejemplo basado en el anterior)
-# Asumiendo que res_mes es lo que calculamos antes:
-# res_mes = df_mortalidad.groupby('MES_DEL_HECHO')['casos'].sum().reindex(meses_map.values())
+        df['nombre_mes'] = df['mes'].map(meses_map)
 
-# 4. Graficar la Correlación
-fig, ax1 = plt.subplots(figsize=(12, 6))
+        # Promedio histórico de lluvia por mes (2017-2023)
+        lluvia_mensual = df.groupby('nombre_mes')['precipitacion_mm'].mean().reindex(meses_orden)
 
-# Eje 1: Barras para la Lluvia
-ax1.bar(lluvia_mensual.index, lluvia_mensual, color='skyblue', alpha=0.6, label='Precipitación (mm)')
-ax1.set_xlabel('Mes')
-ax1.set_ylabel('Lluvia Promedio (mm)', color='blue')
-ax1.tick_params(axis='y', labelcolor='blue')
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig.suptitle('COMPORTAMIENTO HISTÓRICO DE LLUVIA EN BOGOTÁ (2017-2023)',
+                     fontsize=14, fontweight='bold')
 
-# Eje 2: Línea para la Mortalidad (Crea un segundo eje Y)
-ax2 = ax1.twinx()
-# Nota: Aquí deberías pasar tu serie de 'res_mes' de mortalidad
-# ax2.plot(res_mes.index, res_mes, color='red', marker='o', linewidth=2, label='Mortalidad')
-ax2.set_ylabel('Casos de Mortalidad', color='red')
-ax2.tick_params(axis='y', labelcolor='red')
+        # --- Gráfico 1: Promedio mensual histórico ---
+        axes[0].bar(meses_orden, lluvia_mensual, color='skyblue', edgecolor='navy', alpha=0.8)
+        axes[0].set_title('Precipitación Promedio por Mes', fontsize=12)
+        axes[0].set_ylabel('mm promedio')
+        axes[0].tick_params(axis='x', rotation=45)
+        axes[0].grid(axis='y', linestyle='--', alpha=0.5)
+        # Resaltar octubre
+        axes[0].get_children()[9].set_color('orange')  # índice 9 = octubre
 
-plt.title('¿Afecta la lluvia a la mortalidad vial en Bogotá?', fontsize=15)
-ax1.legend(loc='upper left')
-# ax2.legend(loc='upper right')
+        # --- Gráfico 2: Evolución anual de octubre (para mostrar variabilidad) ---
+        octubre_anual = df[df['mes'] == 10].groupby('anio')['precipitacion_mm'].mean()
+        axes[1].plot(octubre_anual.index, octubre_anual.values,
+                     marker='o', color='orange', linewidth=2)
+        axes[1].set_title('Precipitación en Octubre por Año', fontsize=12)
+        axes[1].set_ylabel('mm')
+        axes[1].set_xlabel('Año')
+        axes[1].grid(True, linestyle='--', alpha=0.5)
 
-plt.show()
+        print("Generando gráfico de lluvias...")
+        plt.tight_layout()
+        plt.savefig('dashboard_lluvia.png', bbox_inches='tight', dpi=150)
+        print("Guardado como 'dashboard_lluvia.png'")
+        plt.show()
+
+    except Exception as e:
+        print(f"Error: {e}")
+        print(f"Verifica que '{archivo}' esté en la misma carpeta que este script.")
+
+if __name__ == "__main__":
+    ejecutar_analisis_lluvia()
