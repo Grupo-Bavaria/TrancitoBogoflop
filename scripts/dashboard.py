@@ -140,7 +140,7 @@ try:
         
         st.plotly_chart(fig_hora, use_container_width=True)
     else:
-        st.warning(f"No se encontró la columna de horario: {col_hora}")
+        st.warning(f"No se encontró la columna de horario especificada: {col_h}")
 
 except Exception as e:
     st.error(f"Error: {e}")
