@@ -25,6 +25,11 @@ Análisis de patrones temporales de mortalidad vial en Bogotá (2015-2025) y su 
  [**Wiki del proyecto**](https://github.com/Grupo-Bavaria/TrancitoBogoflop/wiki)
 Incluye: presentación equipo, roles del equipo y bitácora de exploración.
 
+
+## Nota
+Se excluyó el año 2019 por inconsistencias en la estructura de registro de siniestros reportadas en el dataset SDM, garantizando homogeneidad temporal para el análisis de correlación.
+
+
 ## Ejecución del análisis
 ```bash
 # 1. Clonar repositorio
@@ -39,3 +44,10 @@ python scripts/datos_lluvia.py
 python scripts/Comparacion.py
 
 # 4. Revisar resultados en /outputs
+
+```
+
+## Ejecutar dashboard interactivo
+```bash
+pip install -r requirements.txt
+streamlit run scripts/dashboard_streamlit.py
