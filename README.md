@@ -50,4 +50,4 @@ python scripts/Comparacion.py
 ## Ejecutar dashboard interactivo
 ```bash
 pip install -r requirements.txt
-streamlit run scripts/dashboard_streamlit.py
+python -m streamlit run dashboard.py
