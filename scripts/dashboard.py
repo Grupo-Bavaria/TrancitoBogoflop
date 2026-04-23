@@ -3,8 +3,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy import stats
+import os
 
-# 1. CONFIGURACION Y ESTILO
+# 1. CONFIGURACION Y ESTILO DE LA PAGINA
 st.set_page_config(page_title="DataJam Bogota 2026", layout="wide")
 
 st.markdown("""
@@ -14,36 +15,60 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. BARRA LATERAL
+# 2. BARRA LATERAL (SIDEBAR)
 with st.sidebar:
     st.title("Panel de Control")
+    st.markdown("Filtre los datos para profundizar en el analisis.")
     years = [2017, 2018, 2020, 2021, 2022]
     selected_years = st.multiselect("Seleccione los Anios:", years, default=years)
     st.markdown("---")
-    st.info("Navegue por las pestanias para ver diferentes perspectivas.")
+    st.info("Sugerencia: Use las pestanias centrales para navegar entre las dimensiones del analisis.")
 
-# 3. FUNCION DE CARGA
+# 3. FUNCION DE CARGA Y LIMPIEZA (CON LOGICA DE OPCION B)
 @st.cache_data
 def cargar_y_filtrar(anios_seleccionados):
-    df_t = pd.read_csv('osb_evento_transporte.csv', sep=';', encoding='latin-1')
-    df_l = pd.read_csv('lluvia_mensual_bogota.csv')
+    # Logica de la Opcion B para encontrar archivos en scripts/ o raiz
+    def obtener_ruta(archivo):
+        if os.path.exists(archivo):
+            return archivo
+        ruta_scripts = os.path.join("scripts", archivo)
+        if os.path.exists(ruta_scripts):
+            return ruta_scripts
+        return archivo
+
+    ruta_transporte = obtener_ruta('osb_evento_transporte.csv')
+    ruta_lluvia = obtener_ruta('lluvia_mensual_bogota.csv')
+
+    # Lectura de archivos
+    df_t = pd.read_csv(ruta_transporte, sep=';', encoding='latin-1')
+    df_l = pd.read_csv(ruta_lluvia)
+    
+    # Normalizacion de columnas
     df_t.columns = df_t.columns.str.strip().str.upper()
     df_l.columns = df_l.columns.str.strip().str.upper()
+
     df_filt = df_t[df_t['ANO'].isin(anios_seleccionados)].copy()
     df_l_filt = df_l[df_l['ANIO'].isin(anios_seleccionados)].copy()
+
     meses_map = {1:'enero', 2:'febrero', 3:'marzo', 4:'abril', 5:'mayo', 6:'junio',
                  7:'julio', 8:'agosto', 9:'septiembre', 10:'octubre', 11:'noviembre', 12:'diciembre'}
     meses_orden = list(meses_map.values())
+
     df_filt['MES_DEL_HECHO'] = df_filt['MES_DEL_HECHO'].astype(str).str.lower().str.strip()
     df_l_filt['NOMBRE_MES'] = df_l_filt['MES'].map(meses_map)
+
     muertes = df_filt.groupby('MES_DEL_HECHO')['CASOS'].sum().reindex(meses_orden)
     lluvia  = df_l_filt.groupby('NOMBRE_MES')['PRECIPITACION_MM'].mean().reindex(meses_orden)
+    
     return df_filt, meses_orden, lluvia, muertes
 
 try:
     df_full, meses, lluvia, muertes = cargar_y_filtrar(selected_years)
+
     st.title('Observatorio de Movilidad y Clima - Bogota')
+    st.subheader(f"Analisis de siniestralidad periodos: {', '.join(map(str, selected_years))}")
     
+    # 4. METRICAS
     r_val = stats.linregress(lluvia.values, muertes.values)[2]
     m1, m2, m3, m4 = st.columns(4)
     with m1: st.metric("Correlacion (r)", f"{r_val:.3f}")
@@ -52,6 +77,8 @@ try:
     with m4: st.metric("Pico Mensual", muertes.idxmax().capitalize())
 
     st.markdown("---")
+
+    # 5. PESTAÑAS (TABS)
     tab1, tab2, tab3 = st.tabs(["Relacion Clima", "Perfil Geografico", "Causas y Tipos"])
 
     with tab1:
@@ -60,25 +87,29 @@ try:
             fig1 = go.Figure()
             fig1.add_trace(go.Bar(x=meses, y=lluvia, name="Lluvia (mm)", marker_color='#3498DB', opacity=0.5))
             fig1.add_trace(go.Scatter(x=meses, y=muertes, name="Muertes", line=dict(color='#E74C3C', width=4), yaxis="y2"))
-            fig1.update_layout(title="Precipitacion vs Mortalidad", yaxis2=dict(overlaying="y", side="right"), template="plotly_dark")
+            fig1.update_layout(title="Precipitacion vs Mortalidad", yaxis2=dict(overlaying="y", side="right"), template="plotly_dark", hovermode="x unified")
             st.plotly_chart(fig1, use_container_width=True)
         with c_b:
             l_n = (lluvia - lluvia.min())/(lluvia.max() - lluvia.min())
             m_n = (muertes - muertes.min())/(muertes.max() - muertes.min())
-            st.plotly_chart(px.line(x=meses, y=[l_n, m_n], labels={'value':'Escala 0-1', 'x':'Meses'}, title="Sincronia de Tendencias", template="plotly_dark"), use_container_width=True)
+            fig2 = px.line(x=meses, y=[l_n, m_n], labels={'value':'Escala 0-1', 'x':'Meses'}, title="Sincronia de Tendencias")
+            fig2.update_layout(template="plotly_dark")
+            st.plotly_chart(fig2, use_container_width=True)
 
     with tab2:
         c_c, c_d = st.columns(2)
         with c_c:
-            excluir_loc = ['BOGOTA', 'BOGOTÁ', 'SDP', 'SIN INFORMACION', 'SUBESTACION']
+            excluir_loc = ['BOGOTA', 'BOGOTÁ', 'SDP', 'SIN INFORMACION', 'SIN INFORMACIÓN', 'SUBESTACION']
             df_loc = df_full[~df_full['LOCALIDAD'].str.upper().isin(excluir_loc)]
             top_loc = df_loc.groupby('LOCALIDAD')['CASOS'].sum().sort_values().tail(10)
-            st.plotly_chart(px.bar(top_loc, orientation='h', title="Top 10 Localidades Criticas", color_discrete_sequence=['#F39C12'], template="plotly_dark"), use_container_width=True)
+            fig_loc = px.bar(top_loc, orientation='h', title="Top 10 Localidades Criticas", color_discrete_sequence=['#F39C12'], template="plotly_dark")
+            st.plotly_chart(fig_loc, use_container_width=True)
         with c_d:
-            dist_c = df_full.groupby('CONDICION_DE_LA_VICTIMA_AT_')['CASOS'].sum()
-            fig_pie_actor = px.pie(values=dist_c, names=dist_c.index, hole=.4, title="Actor Vial Involucrado", template="plotly_dark")
-            fig_pie_actor.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_pie_actor, use_container_width=True)
+            col_cond = 'CONDICION_DE_LA_VICTIMA_AT_'
+            dist_c = df_full.groupby(col_cond)['CASOS'].sum()
+            fig_pie = px.pie(values=dist_c, names=dist_c.index, hole=.4, title="Actor Vial Involucrado", template="plotly_dark")
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_pie, use_container_width=True)
 
     with tab3:
         c_e, c_f = st.columns(2)
@@ -86,10 +117,10 @@ try:
             col_cau = 'CIRCUNSTANCIA_DEL_HECHO_DETALLADA'
             df_c_limpio = df_full[~df_full[col_cau].str.upper().str.contains('OTRO|OTRA|SIN INFO|NO APLICA', na=False)]
             dist_cau = df_c_limpio.groupby(col_cau)['CASOS'].sum().sort_values().tail(8)
-            st.plotly_chart(px.bar(dist_cau, orientation='h', title="Causas mas Comunes", labels={'value': 'Muertes', 'index': 'Causa'}, color_discrete_sequence=['#45B39D'], template="plotly_dark"), use_container_width=True)
+            fig_cau = px.bar(dist_cau, orientation='h', title="Causas mas Comunes", labels={'value': 'Muertes', 'index': 'Causa'}, color_discrete_sequence=['#45B39D'], template="plotly_dark")
+            st.plotly_chart(fig_cau, use_container_width=True)
             
         with c_f:
-            # --- TIPO DE SINIESTRO SOFISTICADO (ARREGLADO) ---
             col_tip = 'CLASE_O_TIPO_DE_ACCIDENTE_DE_TRANSPORTE'
             dist_tipo = df_full.groupby(col_tip)['CASOS'].sum().sort_values(ascending=False).head(6)
             
@@ -99,19 +130,18 @@ try:
                 hole=0.5,
                 marker=dict(colors=px.colors.sequential.Tealgrn),
                 textinfo='label+percent',
-                textposition='outside', # Esto saca las etiquetas para que no se vea vacio
-                insidetextorientation='radial'
+                textposition='outside'
             )])
-            
             fig_tipo.update_layout(
                 title="Distribucion por Tipo de Siniestro",
                 template="plotly_dark",
                 showlegend=False,
-                margin=dict(t=50, b=20, l=20, r=20), # Ajustamos los margenes para que use todo el cuadro
-                annotations=[dict(text='Tipos', x=0.5, y=0.5, font_size=20, showarrow=False)] # Texto en el centro de la dona
+                margin=dict(t=50, b=20, l=20, r=20),
+                annotations=[dict(text='Tipos', x=0.5, y=0.5, font_size=20, showarrow=False)]
             )
             st.plotly_chart(fig_tipo, use_container_width=True)
 
+    # 6. ANALISIS HORARIO
     st.markdown("---")
     st.subheader("Franjas Horarias de Mayor Riesgo")
     col_hora = 'RANGO_DE_HORA_DEL_HECHO_XXX3_HORAS_'
