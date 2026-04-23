@@ -2,10 +2,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
+import os
+import pandas as pd
 
 def ejecutar_correlacion():
-    archivo_transporte = 'osb_evento_transporte.csv'
-    archivo_lluvia     = 'lluvia_mensual_bogota.csv'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    archivo_transporte = os.path.join(script_dir, 'osb_evento_transporte.csv')
+    archivo_lluvia     = os.path.join(script_dir, 'lluvia_mensual_bogota.csv')
+
 
     df_trans  = pd.read_csv(archivo_transporte, sep=';', encoding='latin-1')
     df_lluvia = pd.read_csv(archivo_lluvia)
@@ -58,7 +63,7 @@ def ejecutar_correlacion():
     ax2.grid(True, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
-    plt.savefig('correlacion_lluvia_muertes.png', bbox_inches='tight', dpi=150)
+    plt.savefig('outputs/correlacion_lluvia_muertes.png', bbox_inches='tight', dpi=150)
 
 if __name__ == "__main__":
     ejecutar_correlacion()

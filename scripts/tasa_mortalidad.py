@@ -1,8 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import pandas as pd
 
 def ejecutar_analisis_mortalidad():
-    archivo = 'osb_evento_transporte.csv'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    archivo = os.path.join(script_dir, 'osb_evento_transporte.csv')
     df = pd.read_csv(archivo, sep=';', encoding='latin-1')
     df = df[(df['ANO'] >= 2017) & (df['ANO'] <= 2022) & (df['ANO'] != 2019)]
 
@@ -49,7 +52,7 @@ def ejecutar_analisis_mortalidad():
     axes[1, 1].tick_params(axis='x', rotation=45)
     axes[1, 1].set_xlabel('')
 
-    plt.savefig('dashboard_mortalidad.png', bbox_inches='tight', dpi=150)
+    plt.savefig('outputs/tasa_mortalidad.png', bbox_inches='tight', dpi=150)
 
 if __name__ == "__main__":
     ejecutar_analisis_mortalidad()

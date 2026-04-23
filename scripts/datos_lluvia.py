@@ -1,8 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import pandas as pd
 
 def ejecutar_analisis_lluvia():
-    archivo = 'lluvia_mensual_bogota.csv'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+    archivo = os.path.join(script_dir, 'lluvia_mensual_bogota.csv')
     df = pd.read_csv(archivo)
     df = df[(df['anio'] >= 2017) & (df['anio'] <= 2022) & (df['anio'] != 2019)]
 
@@ -34,7 +39,7 @@ def ejecutar_analisis_lluvia():
     axes[1].grid(True, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
-    plt.savefig('dashboard_lluvia.png', bbox_inches='tight', dpi=150)
+    plt.savefig('outputs/datos_lluvia.png', bbox_inches='tight', dpi=150)
 
 if __name__ == "__main__":
     ejecutar_analisis_lluvia()
